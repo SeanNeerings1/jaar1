@@ -1,63 +1,74 @@
 Player player;
-Platform ground;
-Platform platforms;
+ArrayList<Platform> platforms;
+
+boolean[] keys = new boolean[128];
 
 void setup() {
   fullScreen();
   
   player = new Player(100, 400, 50, 50);
-  ground = new Platform(0, 550, width, 50);
-  platform = new ArrayList<Platform>();
-  platforms.add(new Platform(300, 400, 50, 50));
-  platforms.add(new Platform(600, 500, 50, 50));
-  platforms.add(new Platform(900, 350, 50, 50));
+  
+  platforms = new ArrayList<Platform>();
+  platforms.add(new Platform(0, 550, 300, height)); // Start platform
+  platforms.add(new Platform(300, 400, 100, 20)); 
+  platforms.add(new Platform(600, 500, 100, 20));
+  platforms.add(new Platform(900, 350, 100, 20));
+  platforms.add(new Platform(900, 450, 200, 20));
+  platforms.add(new Platform(1700, 550, 300, height)); // Finish platform
 }
 
 void keyPressed() {
-  if (key == 'a' || key == 'A') {
-    player.xVelocity = -5;
-  } else if (key == 'd' || key == 'D') {
-    player.xVelocity = 5;
-  } else if (key == 'w' || key == 'W') {
-    if (player.onGround) {
-      player.yVelocity = -10;
-      player.onGround = false;
-    }
-  } else if (key == ' ' || key == ' ') {
-    if (player.onGround) {
-      player.yVelocity = -10;
-      player.onGround = false;
-    }
-  }
+  if (key < 128) keys[key] = true;
 }
 
 void keyReleased() {
-  if (key == 'a' || key == 'A' || key == 'd' || key == 'D') {
-    player.xVelocity = 0;
-  }
-
-  
+  if (key < 128) keys[key] = false;
 }
 
 void update() {
+  if (keys['a'] || keys['A']) {
+    player.xVelocity = -5;
+  } else if (keys['d'] || keys['D']) {
+    player.xVelocity = 5;
+  } else {
+    player.xVelocity = 0;
+  }
+
+  if ((keys['w'] || keys['W'] || keys[' ']) && player.onGround) {
+    player.yVelocity = -10;
+    player.onGround = false;
+  }
+
   player.x += player.xVelocity;
   player.y += player.yVelocity;
-  
+  player.yVelocity += player.gravity;
   player.onGround = false;
 
-  if (!player.onGround) {
-    player.yVelocity += player.gravity;
-  }
-  
- if (player.y + player.h >= ground.y && 
-      player.x + player.w > ground.x && player.x < ground.x + ground.w) {
-    player.y = ground.y - player.h;
-    player.yVelocity = 0;
-    player.onGround = true;
+  if (player.y > height + 100) player.respawn();
+
+  for (Platform p : platforms) {
+    if (player.x + player.w > p.x && player.x < p.x + p.w &&
+        player.y + player.h > p.y && player.y < p.y + p.h) {
+
+      if (player.yVelocity > 0 && player.y + player.h - p.y < 20) {
+        player.y = p.y - player.h;
+        player.yVelocity = 0;
+        player.onGround = true;
+      } 
+      else if (player.yVelocity < 0 && p.y + p.h - player.y < 100) {
+        player.y = p.y + p.h;
+        player.yVelocity = 4;
+      } 
+      else {
+        if (player.x + player.w / 2 < p.x + p.w / 2)
+          player.x = p.x - player.w;
+        else
+          player.x = p.x + p.w;
+        player.xVelocity = 0;
+      }
+    }
   }
 }
-
-
 
 void draw() {
   background(135, 206, 235); 
@@ -65,8 +76,10 @@ void draw() {
   update();
   
   player.display();
-  ground.display();
-  platforms.display();
+  
+  for (Platform p : platforms) {
+    p.display();
+  }
 }
 
 class Player {
@@ -75,13 +88,22 @@ class Player {
   float xVelocity = 0;
   float gravity = 0.5;
   boolean onGround = false;
-
+  float spawnX, spawnY;
 
   Player(float x, float y, float w, float h) {
     this.x = x;
     this.y = y;
     this.w = w;
     this.h = h;
+    spawnX = x;
+    spawnY = y;
+  }
+
+  void respawn() {
+    x = spawnX;
+    y = spawnY;
+    xVelocity = 0;
+    yVelocity = 0;
   }
   
   void display() {
@@ -91,10 +113,9 @@ class Player {
 }
 
 class Platform {
-  
   float x, y, w, h;
   
-  Platforms(float x, float y, float w, float h) {
+  Platform(float x, float y, float w, float h) {
     this.x = x;
     this.y = y;
     this.w = w;
